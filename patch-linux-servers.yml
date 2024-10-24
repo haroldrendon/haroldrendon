@@ -1,6 +1,6 @@
 ---
 - name: Parchar y reiniciar servidores
-  hosts: web
+  hosts: all
   become: true
   vars:
     yum_name: "*"
