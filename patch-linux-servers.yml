@@ -14,21 +14,22 @@
       register: update_result
       ignore_errors: true
 
-    - name: Verificar si es necesario reiniciar el servidor
-      ansible.builtin.stat:
-        path: /var/run/reboot-required
+    - name: Verificar si es necesario reiniciar el servidor (RHEL-based)
+      ansible.builtin.shell: |
+        needs-restarting -r && echo "Reboot Required" || echo "No Reboot Required"
       register: reboot_required_check
+      changed_when: "'Reboot Required' in reboot_required_check.stdout"
 
     - name: Reiniciar el servidor si es necesario
       ansible.builtin.reboot:
         msg: "Reiniciando el servidor debido a la actualización de paquetes"
         reboot_timeout: 600
-      when: reboot_required_check.stat.exists
+      when: "'Reboot Required' in reboot_required_check.stdout"
 
     - name: Esperar a que el servidor esté disponible después del reinicio
       ansible.builtin.wait_for_connection:
         timeout: 300
-      when: reboot_required_check.stat.exists
+      when: "'Reboot Required' in reboot_required_check.stdout"
 
     - name: Ejecutar pruebas post-actualización
       ansible.builtin.shell: |
