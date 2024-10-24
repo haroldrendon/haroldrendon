@@ -4,33 +4,44 @@
   become: true
   vars:
     telegram_bot_token: "7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA"   # Reemplaza con tu token
-    telegram_chat_id: "Oasis12_bot"                 # Reemplaza con tu chat ID
+    telegram_chat_id: "Oasis12_bot"                # Reemplaza con tu chat ID
   tasks:
+    - name: Instalar `python3-dnf` si no está presente
+      ansible.builtin.yum:
+        name: python3-dnf
+        state: present
+      ignore_errors: true
+
+    - name: Instalar `curl` si no está presente
+      ansible.builtin.yum:
+        name: curl
+        state: present
+      ignore_errors: true
 
     - name: Actualizar los paquetes a la última versión
       ansible.builtin.yum:
         name: "*"
         state: latest
       register: update_result
-      ignore_errors: true  # Permitir que el playbook continúe incluso si falla
+      ignore_errors: true
 
     - name: Verificar si es necesario reiniciar el servidor (RHEL-based)
       ansible.builtin.shell: |
         needs-restarting -r; echo $?
       register: reboot_required_check
-      changed_when: reboot_required_check.stdout == "0"  # Si el comando devuelve 0, significa que se requiere reinicio
-      failed_when: reboot_required_check.rc not in [0, 1]  # Permitir sólo códigos de retorno 0 o 1
+      changed_when: reboot_required_check.stdout == "0"
+      failed_when: reboot_required_check.rc not in [0, 1]
 
     - name: Reiniciar el servidor si es necesario
       ansible.builtin.reboot:
         msg: "Reiniciando el servidor debido a la actualización de paquetes"
         reboot_timeout: 600
-      when: reboot_required_check.stdout == "0"  # Comprobar si se requiere reinicio
+      when: reboot_required_check.stdout == "0"
 
     - name: Esperar a que el servidor esté disponible después del reinicio
       ansible.builtin.wait_for_connection:
         timeout: 300
-      when: reboot_required_check.stdout == "0"  # Comprobar si se requiere reinicio
+      when: reboot_required_check.stdout == "0"
 
     - name: Ejecutar pruebas post-actualización
       ansible.builtin.shell: |
@@ -38,18 +49,12 @@
         ping -c 4 8.8.8.8
         systemctl status sshd
       register: post_update_checks
-      ignore_errors: true  # Ignorar errores en las pruebas post-actualización
+      ignore_errors: true
 
-    - name: Enviar resultados de actualización a Telegram
-      ansible.builtin.uri:
-        url: "https://api.telegram.org/bot{{ telegram_bot_token }}/sendMessage"
-        method: POST
-        headers:
-          Content-Type: "application/json"
-        body_format: json
-        body: |
-          {
-            "chat_id": "{{ telegram_chat_id }}",
-            "text": "Resultado de la actualización:\n{{ post_update_checks.stdout }}"
-          }
+    - name: Enviar resultados de actualización a Telegram usando curl
+      ansible.builtin.shell: |
+        curl -s -X POST "https://api.telegram.org/bot{{ telegram_bot_token }}/sendMessage" \
+          -d chat_id="{{ telegram_chat_id }}" \
+          -d text="Resultado de la actualización:\n{{ post_update_checks.stdout }}"
       delegate_to: localhost
+      ignore_errors: true
