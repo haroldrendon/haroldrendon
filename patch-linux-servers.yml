@@ -1,6 +1,6 @@
 ---
 - name: Parchar y reiniciar servidores
-  hosts: all
+  hosts: web
   become: true
   vars:
     yum_name: "*"
@@ -10,9 +10,7 @@
     yum_exclude: ""
     dnf_name: "*"
     dnf_state: latest
-    dnf_enablerepo: "rhel-8-for-x86_64-appstream-rpms,rhel-8-for-x86_64-baseos-rpms,satellite-tools-6.?-for-rhel-8-x86_64-rpms"
-    dnf_disablerepo: "*"
-    dnf_exclude: ""
+    dnf_enablerepo: "rhel-8-for-x86_64-appstream-rpms,rhel-8-for-x86_64-baseos-rpms,satellite-tools-6.?-for-rhel-8-x86
     telegram_bot_token: "7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA"  # Token de tu bot de Telegram
     telegram_chat_id: "Oasis12_bot"                                         # ID del chat de Telegram
 
