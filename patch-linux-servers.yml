@@ -7,6 +7,24 @@
     telegram_chat_id: "Oasis12_bot"                # Reemplaza con tu chat ID
   tasks:
 
+    - name: Instalar `python3-dnf` si no está presente
+      ansible.builtin.yum:
+        name: python3-dnf
+        state: present
+      ignore_errors: true
+
+          - name: Instalar `python2-dnf` si no está presente
+      ansible.builtin.yum:
+        name: python2-dnf
+        state: present
+      ignore_errors: true
+
+          - name: Instalar `python-dnf` si no está presente
+      ansible.builtin.yum:
+        name: python-dnf
+        state: present
+      ignore_errors: true
+      
     - name: Instalar `curl` si no está presente
       ansible.builtin.yum:
         name: curl
