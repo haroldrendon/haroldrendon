@@ -5,15 +5,20 @@
   vars:
     telegram_bot_token: "TU_TELEGRAM_BOT_TOKEN"
     telegram_chat_id: "TU_CHAT_ID"
+    packages:
+      - "*"
+  
   tasks:
 
     - name: Actualizar los paquetes a la última versión
       ansible.builtin.package:
-        name: "*"
+        name: "{{ item }}"
         state: latest
       register: update_result
+      loop: "{{ packages }}"
+      ignore_errors: true
 
-    - name: Verificar si es necesario reiniciar el servidor (basado en el paquete actualizado)
+    - name: Verificar si es necesario reiniciar el servidor
       ansible.builtin.shell: |
         if [ -f /var/run/reboot-required ]; then
           echo "Reboot Required";
@@ -43,17 +48,4 @@
         systemctl status sshd
       register: post_update_checks
 
-    - name: Enviar resultados de actualización a Telegram
-      ansible.builtin.uri:
-        url: "https://api.telegram.org/bot{{ telegram_bot_token }}/sendMessage"
-        method: POST
-        headers:
-          Content-Type: "application/json"
-        body_format: json
-        body: |
-          {
-            "chat_id": "{{ telegram_chat_id }}",
-            "text": "Resultado de la actualización:\n{{ post_update_checks.stdout }}"
-          }
-      delegate_to: localhost
-
+    - name: Enviar resultados de actualización a Telegr
