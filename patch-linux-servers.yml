@@ -6,9 +6,9 @@
     telegram_bot_token: "7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA"   # Reemplaza con tu token
     telegram_chat_id: "Oasis12_bot"                # Reemplaza con tu chat ID
   tasks:
-    - name: Instalar `python3-dnf` si no está presente
+    - name: Instalar `python2-dnf` si no está presente
       ansible.builtin.yum:
-        name: python3-dnf
+        name: python2-dnf
         state: present
       ignore_errors: true
 
