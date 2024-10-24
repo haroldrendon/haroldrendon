@@ -13,8 +13,6 @@
     dnf_enablerepo: "rhel-8-for-x86_64-appstream-rpms,rhel-8-for-x86_64-baseos-rpms,satellite-tools-6.?-for-rhel-8-x86_64-rpms"
     dnf_disablerepo: "*"
     dnf_exclude: ""
-    telegram_bot_token: "7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA"  # Token de tu bot de Telegram
-    telegram_chat_id: "Oasis12_bot"                                         # ID del chat de Telegram
 
   tasks:
     - name: Actualizar paquetes vía yum
@@ -25,7 +23,8 @@
         enablerepo: "{{ yum_enablerepo }}"
         exclude: "{{ yum_exclude }}"
       register: yum_update
-      when: ansible_facts['distribution_major_version'] in ['6', '7']
+      when:
+        - (ansible_facts['distribution_major_version'] == '6') or (ansible_facts['distribution_major_version'] == '7')
 
     - name: Mostrar errores de yum si ocurrieron
       debug:
@@ -40,41 +39,42 @@
         enablerepo: "{{ dnf_enablerepo }}"
         exclude: "{{ dnf_exclude }}"
       register: dnf_update
-      when: ansible_facts['distribution_major_version'] == '8'
+      when:
+        - ansible_facts['distribution_major_version'] == '8'
 
     - name: Mostrar errores de dnf si ocurrieron
       debug:
         msg: "El comando dnf produjo errores"
       when: dnf_update is not defined
 
-    - name: Verificar si es necesario reiniciar el servidor
+    - name: Verificar si es necesario un reinicio
       command: needs-restarting -r
-      register: reboot_check
-      ignore_errors: true
+      register: result
+      ignore_errors: yes
 
-    - name: Mostrar resultado de verificación de reinicio
+    - name: Mostrar resultado de la verificación
       debug:
-        var: reboot_check
+        var: result.rc
 
-    - name: Reiniciar el servidor si es necesario
-      command: shutdown -r now "Actualizaciones de Ansible aplicadas"
+    - name: Reiniciar servidor si es necesario
+      command: shutdown -r now "Actualización de Ansible completada"
       async: 30
       poll: 0
-      when: reboot_check.rc == 1
+      when: result.rc == 1
 
-    - name: Pausar para permitir que el servidor se reinicie y la conexión SSH se termine
+    - name: Pausar para permitir que el servidor se apague
       pause:
         seconds: 30
-      when: reboot_check.rc == 1
+      when: result.rc == 1
 
-    - name: Esperar a que el servidor esté disponible tras el reinicio
-      local_action:
-        module: wait_for
-        host: "{{ inventory_hostname }}"
-        port: 22
-        state: started
-        delay: 30
+    - name: Esperar a que el reinicio se complete y que SSH esté disponible
+      local_action: 
+        module: wait_for 
+        host: "{{ inventory_hostname }}" 
+        port: 22 
+        state: started 
+        delay: 30 
         timeout: 600
       retries: 30
       delay: 10
-     
+      when: result.rc == 1
