@@ -3,8 +3,8 @@
   hosts: all
   become: true
   vars:
-    telegram_bot_token: "TU_TELEGRAM_BOT_TOKEN"   # Reemplaza con tu token
-    telegram_chat_id: "TU_CHAT_ID"                 # Reemplaza con tu chat ID
+    telegram_bot_token: "7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA"   # Reemplaza con tu token
+    telegram_chat_id: "Oasis12_bot"                 # Reemplaza con tu chat ID
   tasks:
 
     - name: Actualizar los paquetes a la última versión
