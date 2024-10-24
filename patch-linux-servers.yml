@@ -1,38 +1,42 @@
----
-- name: Playbook para parchar servidores Linux
+name: Playbook para parchar servidores Linux
   hosts: all
   become: true
   vars:
     telegram_bot_token: "TU_TELEGRAM_BOT_TOKEN"
     telegram_chat_id: "TU_CHAT_ID"
-
   tasks:
     - name: Actualizar los paquetes a la última versión
-      ansible.builtin.yum:
+      ansible.builtin.package:
         name: "*"
         state: latest
       register: update_result
-      changed_when: update_result.changed
-      failed_when: update_result.failed or update_result.msg is defined
-
-    - name: Verificar si es necesario reiniciar el servidor (RHEL-based)
-      ansible.builtin.command: needs-restarting -r
-      register: needs_reboot_check
-      changed_when: needs_reboot_check.rc == 0
-      failed_when: needs_reboot_check.rc not in [0, 1]
-
+    - name: Verificar si es necesario reiniciar el servidor (basado en el paquete actualizado)
+      ansible.builtin.shell: |
+        if [ -f /var/run/reboot-required ]; then
+          echo "Reboot Required";
+        else
+          echo "No Reboot Required";
+        fi
+      register: reboot_required_check
+      changed_when: "'Reboot Required' in reboot_required_check.stdout"
     - name: Reiniciar el servidor si es necesario
       ansible.builtin.reboot:
         msg: "Reiniciando el servidor debido a la actualización de paquetes"
         reboot_timeout: 600
-      when: needs_reboot_check.rc == 0
-
+      when: "'Reboot Required' in reboot_required_check.stdout"
     - name: Esperar a que el servidor esté disponible después del reinicio
       ansible.builtin.wait_for_connection:
         timeout: 300
-      when: needs_reboot_check.rc == 0
-
-    - name: Enviar notificación de actualización a Telegram
+    - name: Ejecutar pruebas post-actualización
+      ansible.builtin.shell: |
+        echo "Iniciando pruebas post-actualización"
+        # Aquí se pueden agregar los comandos de pruebas necesarios
+        echo "Prueba de conectividad a la red"
+        ping -c 4 8.8.8.8
+        echo "Verificación de servicios"
+        systemctl status sshd
+      register: post_update_checks
+    - name: Enviar resultados de actualización a Telegram
       ansible.builtin.uri:
         url: "https://api.telegram.org/bot{{ telegram_bot_token }}/sendMessage"
         method: POST
@@ -42,6 +46,6 @@
         body: |
           {
             "chat_id": "{{ telegram_chat_id }}",
-            "text": "El servidor ha sido actualizado y reiniciado si era necesario."
+            "text": "Resultado de la actualización:\n{{ post_update_checks.stdout }}"
           }
       delegate_to: localhost
