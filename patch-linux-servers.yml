@@ -48,4 +48,30 @@
         systemctl status sshd
       register: post_update_checks
 
-    - name: Enviar resultados de actualización a Telegr
+    - name: Enviar resultados de actualización a Telegram
+      ansible.builtin.uri:
+        url: "https://api.telegram.org/bot{{ telegram_bot_token }}/sendMessage"
+        method: POST
+        headers:
+          Content-Type: "application/json"
+        body_format: json
+        body: |
+          {
+            "chat_id": "{{ telegram_chat_id }}",
+            "text": "Resultado de la actualización:\n{{ post_update_checks.stdout }}"
+          }
+      delegate_to: localhost
+
+    - name: Mensaje de estado del parcheo
+      ansible.builtin.debug:
+        msg: "Los paquetes han sido actualizados exitosamente."
+      when: update_result is changed
+
+    - name: Mensaje si no hay necesidad de actualizar
+      ansible.builtin.debug:
+        msg: "No se requieren actualizaciones en los paquetes."
+      when: update_result is skipped or update_result is not changed
+
+    - name: Mensaje de finalización
+      ansible.builtin.debug:
+        msg: "Playbook de parcheo completado."
