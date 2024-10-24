@@ -3,8 +3,8 @@
   hosts: all
   become: true
   vars:
-    telegram_bot_token: "TU_TELEGRAM_BOT_TOKEN"
-    telegram_chat_id: "TU_CHAT_ID"
+    telegram_bot_token: "TU_TELEGRAM_BOT_TOKEN"   # Reemplaza con tu token
+    telegram_chat_id: "TU_CHAT_ID"                 # Reemplaza con tu chat ID
   tasks:
 
     - name: Actualizar los paquetes a la última versión
@@ -12,24 +12,25 @@
         name: "*"
         state: latest
       register: update_result
-      ignore_errors: true
+      ignore_errors: true  # Permitir que el playbook continúe incluso si falla
 
     - name: Verificar si es necesario reiniciar el servidor (RHEL-based)
       ansible.builtin.shell: |
-        needs-restarting -r && echo "Reboot Required" || echo "No Reboot Required"
+        needs-restarting -r; echo $?
       register: reboot_required_check
-      changed_when: "'Reboot Required' in reboot_required_check.stdout"
+      changed_when: reboot_required_check.stdout == "0"  # Si el comando devuelve 0, significa que se requiere reinicio
+      failed_when: reboot_required_check.rc not in [0, 1]  # Permitir sólo códigos de retorno 0 o 1
 
     - name: Reiniciar el servidor si es necesario
       ansible.builtin.reboot:
         msg: "Reiniciando el servidor debido a la actualización de paquetes"
         reboot_timeout: 600
-      when: "'Reboot Required' in reboot_required_check.stdout"
+      when: reboot_required_check.stdout == "0"  # Comprobar si se requiere reinicio
 
     - name: Esperar a que el servidor esté disponible después del reinicio
       ansible.builtin.wait_for_connection:
         timeout: 300
-      when: "'Reboot Required' in reboot_required_check.stdout"
+      when: reboot_required_check.stdout == "0"  # Comprobar si se requiere reinicio
 
     - name: Ejecutar pruebas post-actualización
       ansible.builtin.shell: |
@@ -37,6 +38,7 @@
         ping -c 4 8.8.8.8
         systemctl status sshd
       register: post_update_checks
+      ignore_errors: true  # Ignorar errores en las pruebas post-actualización
 
     - name: Enviar resultados de actualización a Telegram
       ansible.builtin.uri:
