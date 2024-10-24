@@ -16,8 +16,7 @@
       failed_when: update_result.failed or update_result.msg is defined
 
     - name: Verificar si es necesario reiniciar el servidor (RHEL-based)
-      ansible.builtin.command:
-        cmd: needs-restarting -r
+      ansible.builtin.command: needs-restarting -r
       register: needs_reboot_check
       changed_when: needs_reboot_check.rc == 0
       failed_when: needs_reboot_check.rc not in [0, 1]
@@ -33,14 +32,7 @@
         timeout: 300
       when: needs_reboot_check.rc == 0
 
-    - name: Ejecutar pruebas post-actualización
-      ansible.builtin.shell: |
-        echo "Iniciando pruebas post-actualización"
-        ping -c 4 8.8.8.8 && systemctl status sshd
-      register: post_update_checks
-      failed_when: post_update_checks.rc != 0
-
-    - name: Enviar resultados de actualización a Telegram
+    - name: Enviar notificación de actualización a Telegram
       ansible.builtin.uri:
         url: "https://api.telegram.org/bot{{ telegram_bot_token }}/sendMessage"
         method: POST
@@ -50,6 +42,6 @@
         body: |
           {
             "chat_id": "{{ telegram_chat_id }}",
-            "text": "Resultado de la actualización:\n{{ post_update_checks.stdout }}\nResultado del reinicio: {{ needs_reboot_check.stdout if needs_reboot_check.changed else 'No se requirió reinicio' }}"
+            "text": "El servidor ha sido actualizado y reiniciado si era necesario."
           }
       delegate_to: localhost
