@@ -1,12 +1,10 @@
----
 - name: Playbook para parchar servidores Linux
-  hosts: all
+  hosts: web
   become: true
   vars:
     telegram_bot_token: "TU_TELEGRAM_BOT_TOKEN"
     telegram_chat_id: "TU_CHAT_ID"
   tasks:
-
     - name: Actualizar los paquetes a la última versión
       ansible.builtin.yum:
         name: "*"
