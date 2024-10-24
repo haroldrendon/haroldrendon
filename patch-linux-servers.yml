@@ -1,73 +1,52 @@
 ---
-- name: Playbook para parchar servidores Linux
+- name: Parchar y reiniciar servidores
   hosts: all
   become: true
   vars:
-    telegram_bot_token: "7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA"   # Reemplaza con tu token
-    telegram_chat_id: "Oasis12_bot"                # Reemplaza con tu chat ID
+    yum_name: "*"
+    yum_state: latest
+    yum_enablerepo: "rhel-?-server-rpms,rhel-?-server-satellite-tools-6.?-rpms"
+    yum_disablerepo: "*"
+    yum_exclude: ""
+    dnf_name: "*"
+    dnf_state: latest
+    dnf_enablerepo: "rhel-8-for-x86_64-appstream-rpms,rhel-8-for-x86_64-baseos-rpms,satellite-tools-6.?-for-rhel-8-x86_64-rpms"
+    dnf_disablerepo: "*"
+    dnf_exclude: ""
+    telegram_bot_token: "7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA"  # Token de tu bot de Telegram
+    telegram_chat_id: "Oasis12_bot"                                         # ID del chat de Telegram
+
   tasks:
+    - name: Actualizar paquetes vía yum
+      yum:
+        name: "{{ yum_name }}"
+        state: "{{ yum_state }}"
+        disablerepo: "{{ yum_disablerepo }}"
+        enablerepo: "{{ yum_enablerepo }}"
+        exclude: "{{ yum_exclude }}"
+      register: yum_update
+      when:
+        - (ansible_facts['distribution_major_version'] == '6') or (ansible_facts['distribution_major_version'] == '7')
 
-    - name: Instalar `python3-dnf` si no está presente
-      ansible.builtin.yum:
-        name: python3-dnf
-        state: present
-      ignore_errors: true
+    - name: Mostrar errores de yum si ocurrieron
+      debug:
+        msg: "El comando yum produjo errores"
+      when: yum_update is not defined
 
-          - name: Instalar `python2-dnf` si no está presente
-      ansible.builtin.yum:
-        name: python2-dnf
-        state: present
-      ignore_errors: true
+    - name: Actualizar paquetes vía dnf
+      dnf:
+        name: "{{ dnf_name }}"
+        state: "{{ dnf_state }}"
+        disablerepo: "{{ dnf_disablerepo }}"
+        enablerepo: "{{ dnf_enablerepo }}"
+        exclude: "{{ dnf_exclude }}"
+      register: dnf_update
+      when:
+        - ansible_facts['distribution_major_version'] == '8'
 
-          - name: Instalar `python-dnf` si no está presente
-      ansible.builtin.yum:
-        name: python-dnf
-        state: present
-      ignore_errors: true
-      
-    - name: Instalar `curl` si no está presente
-      ansible.builtin.yum:
-        name: curl
-        state: present
-      ignore_errors: true
+    - name: Mostrar errores de dnf si ocurrieron
+      debug:
+        msg: "El comando dnf produjo errores"
+      when: dnf_update is not defined
 
-    - name: Actualizar los paquetes a la última versión
-      ansible.builtin.yum:
-        name: "*"
-        state: latest
-      register: update_result
-      ignore_errors: true
-
-    - name: Verificar si es necesario reiniciar el servidor (RHEL-based)
-      ansible.builtin.shell: |
-        needs-restarting -r; echo $?
-      register: reboot_required_check
-      changed_when: reboot_required_check.stdout == "0"
-      failed_when: reboot_required_check.rc not in [0, 1]
-
-    - name: Reiniciar el servidor si es necesario
-      ansible.builtin.reboot:
-        msg: "Reiniciando el servidor debido a la actualización de paquetes"
-        reboot_timeout: 600
-      when: reboot_required_check.stdout == "0"
-
-    - name: Esperar a que el servidor esté disponible después del reinicio
-      ansible.builtin.wait_for_connection:
-        timeout: 300
-      when: reboot_required_check.stdout == "0"
-
-    - name: Ejecutar pruebas post-actualización
-      ansible.builtin.shell: |
-        echo "Iniciando pruebas post-actualización"
-        ping -c 4 8.8.8.8
-        systemctl status sshd
-      register: post_update_checks
-      ignore_errors: true
-
-    - name: Enviar resultados de actualización a Telegram usando curl
-      ansible.builtin.shell: |
-        curl -s -X POST "https://api.telegram.org/bot{{ telegram_bot_token }}/sendMessage" \
-          -d chat_id="{{ telegram_chat_id }}" \
-          -d text="Resultado de la actualización:\n{{ post_update_checks.stdout }}"
-      delegate_to: localhost
-      ignore_errors: true
+    - name: Verificar si es
