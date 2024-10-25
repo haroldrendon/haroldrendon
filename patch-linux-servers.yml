@@ -78,3 +78,16 @@
       retries: 30
       delay: 10
       when: result.rc == 1
+ 
+- name: Enviar notificación a Telegram 
+hosts: localhost 
+tasks: 
+- name: Enviar mensaje a Telegram 
+uri: 
+  url: "https://api.telegram.org/bot7672331419:AAENA8ZJUyA8tNciuIFqAhuq-wCbkDcoIQA/sendMessage" 
+  method: POST 
+  body_format: json 
+  body: 
+    chat_id: "1057170729" # Reemplaza con el chat_id correcto 
+    text: "¡Notificación desde Ansible!" 
+  headers: Content-Type: "application/json"
